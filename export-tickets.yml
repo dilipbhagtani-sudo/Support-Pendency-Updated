@@ -1,0 +1,39 @@
+name: Export Freshdesk Tickets
+
+on:
+  # Run every 4 hours automatically
+  schedule:
+    - cron: '0 */4 * * *'
+  # Allow manual trigger from GitHub Actions tab
+  workflow_dispatch:
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Export tickets from Freshdesk
+        env:
+          FRESHDESK_API_KEY: ${{ secrets.FRESHDESK_API_KEY }}
+          FRESHDESK_DOMAIN: ${{ secrets.FRESHDESK_DOMAIN }}
+        run: python scripts/export_tickets.py
+
+      - name: Commit and push updated CSV
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/tickets.csv
+          # Only commit if the file actually changed
+          git diff --cached --quiet || git commit -m "chore: refresh ticket data [$(date -u '+%Y-%m-%d %H:%M UTC')]"
+          git push
